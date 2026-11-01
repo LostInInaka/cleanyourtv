@@ -463,6 +463,12 @@
          online. A theme can set "game_day". -->
     <string name="game_day" translatable="false"></string>
 
+    <!-- The sky and the temperature under the clock: the package of an add-on that publishes them (the
+         Weather Glance add-on: io.github.lostininaka.weatherglance). Empty = off: nothing is read or watched.
+         The launcher only reads what the add-on publishes and never goes online - the add-on does the fetching.
+         A theme can set "weather_now". -->
+    <string name="weather_now" translatable="false"></string>
+
     <!-- Time-of-day backdrop behind everything: a dark gradient that follows the clock, with a warm
          horizon glow around sunrise and sunset. 0 keeps the plain background (the default); 1 to 100
          sets its opacity. Around 60 reads clearly without hiding a wallpaper. Can also be set with

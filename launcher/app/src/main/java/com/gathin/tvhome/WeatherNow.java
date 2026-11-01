@@ -1,0 +1,225 @@
+package com.gathin.tvhome;
+
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
+import android.database.ContentObserver;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Handler;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+
+/**
+ * weather_now (config.xml or a theme): the sky and the temperature under the clock, from an add-on such as
+ * Weather Glance. The launcher only reads what the add-on publishes and stays offline - the add-on does the
+ * fetching, exactly as Game Day does for game_day.
+ */
+final class WeatherNow {
+    static final String META = "com.gathin.tvhome.weather";
+    /** A reading older than this one is yesterday's weather: the row goes rather than say something stale. */
+    static final long FRESH_MS = 3 * 60 * 60 * 1000L;
+    /**
+     * The add-on's contract, asked for exactly: place, temperature, unit, code, is_day, updated_ms. `unit` is
+     * C or F and is never drawn - the launcher prints its own degree - but the query asks for it as agreed.
+     */
+    private static final String[] COLUMNS = {"place", "temperature", "unit", "code", "is_day", "updated_ms"};
+
+    private final Context ctx;
+    private final Uri uri;
+    private final Handler main;
+    private final Runnable onChange;
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final ContentObserver observer;
+    /**
+     * Home is on screen, so a line may be shown. Away from {@link #watching} on purpose: a provider that
+     * refuses the observer still answers the one query Home makes as it comes up.
+     */
+    private volatile boolean active;
+    /** Bumped by {@link #stop()}: every query that claimed the old number belongs to a dead session. */
+    private volatile int generation;
+    /** The observer is registered; false says only that, never that no line may be read. */
+    private boolean watching;
+    private Line line;
+
+    private WeatherNow(Context ctx, Uri uri, Handler main, Runnable onChange) {
+        this.ctx = ctx;
+        this.uri = uri;
+        this.main = main;
+        this.onChange = onChange;
+        observer = new ContentObserver(main) {
+            @Override
+            public void onChange(boolean selfChange) {
+                read();
+            }
+        };
+    }
+
+    /**
+     * Null when the key is empty, the package is not installed, or it names no provider of its own in a
+     * {@value #META} meta-data. Naming the package is the owner's opt-in, as for game_day.
+     */
+    static WeatherNow create(Context ctx, String pkg, Handler main, Runnable onChange) {
+        if (pkg == null || pkg.trim().isEmpty()) return null;
+        try {
+            PackageManager pm = ctx.getPackageManager();
+            ApplicationInfo info = pm.getApplicationInfo(pkg.trim(), PackageManager.GET_META_DATA);
+            String authority = info.metaData == null ? null : info.metaData.getString(META);
+            if (authority == null || authority.trim().isEmpty()) return null;
+            // The provider must be the named package's own, not another app's that claims the authority.
+            ProviderInfo provider = pm.resolveContentProvider(authority.trim(), 0);
+            if (provider == null || !pkg.trim().equals(provider.packageName)) return null;
+            Uri uri = new Uri.Builder().scheme(ContentResolver.SCHEME_CONTENT).authority(authority.trim())
+                    .appendPath("now").build();
+            return new WeatherNow(ctx, uri, main, onChange);
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
+    }
+
+    /** Home is on screen: read now and watch for changes. */
+    void start() {
+        active = true;
+        if (!watching) {
+            try {
+                ctx.getContentResolver().registerContentObserver(uri, false, observer);
+                watching = true;
+            } catch (SecurityException e) {
+                // The add-on's provider went away: the row keeps what it had, and the read below still runs.
+            }
+        }
+        read();
+    }
+
+    /** Home is off screen: the observer goes, and every query still in flight loses its claim. */
+    void stop() {
+        // Before the unregister, so a result already posted to the main thread finds itself unwanted.
+        active = false;
+        generation++;
+        if (watching) ctx.getContentResolver().unregisterContentObserver(observer);
+        watching = false;
+    }
+
+    void shutdown() {
+        stop();
+        // The queue goes with this, but a query already inside the provider cannot be cancelled: the bump in
+        // stop() is what keeps its result off the screen.
+        io.shutdownNow();
+    }
+
+    /** One query off the main thread (the provider lives in the add-on's process), then onChange on the main thread. */
+    void read() {
+        if (!active) return;
+        int claimed = generation;
+        try {
+            io.execute(() -> {
+                // Home may have gone while this waited its turn in the queue: shutdownNow cannot take back a
+                // task a single-thread executor has already started, so the claim is checked here as well.
+                if (!owned(active, claimed, generation)) return;
+                Object[] row;
+                try {
+                    row = row();
+                } catch (RuntimeException gone) {
+                    // Uninstalled or crashed mid-query: keep what is on screen.
+                    return;
+                }
+                Line found = fromRow(row, System.currentTimeMillis());
+                main.post(() -> {
+                    // And once more on the way out: stop() can land while the provider is being read.
+                    if (!owned(active, claimed, generation)) return;
+                    line = found;
+                    onChange.run();
+                });
+            });
+        } catch (RejectedExecutionException shutDown) {
+            // Home is being destroyed.
+        }
+    }
+
+    /** The add-on's one row, read by name; null when it published nothing. Runs on the worker. */
+    private Object[] row() {
+        try (Cursor c = ctx.getContentResolver().query(uri, COLUMNS, null, null, null)) {
+            if (c == null || !c.moveToNext()) return null;
+            // By name, never by position: a provider may answer with the columns in its own order, and a
+            // column it does not publish is simply absent.
+            Object[] row = new Object[COLUMNS.length];
+            int at = c.getColumnIndex("place");
+            if (at >= 0) row[0] = c.getString(at);
+            at = c.getColumnIndex("temperature");
+            if (at >= 0) row[1] = c.getDouble(at);
+            at = c.getColumnIndex("unit");
+            if (at >= 0) row[2] = c.getString(at);
+            at = c.getColumnIndex("code");
+            if (at >= 0) row[3] = c.getInt(at);
+            at = c.getColumnIndex("is_day");
+            if (at >= 0) row[4] = c.getInt(at);
+            at = c.getColumnIndex("updated_ms");
+            if (at >= 0) row[5] = c.getLong(at);
+            return row;
+        }
+    }
+
+    /**
+     * The row as a line, or null for none: nothing published, no temperature, no updated_ms, or a reading
+     * older than {@link #FRESH_MS}. `is_day` rides on the code - only the clear skies differ at night.
+     */
+    static Line fromRow(Object[] row, long nowMs) {
+        if (row == null || !(row[1] instanceof Number) || !(row[5] instanceof Number)) return null;
+        if (nowMs - ((Number) row[5]).longValue() > FRESH_MS) return null;
+        String place = row[0] instanceof String ? ((String) row[0]).trim() : "";
+        int code = row[3] instanceof Number ? ((Number) row[3]).intValue() : -1;
+        boolean day = !(row[4] instanceof Number) || ((Number) row[4]).intValue() != 0;
+        return new Line(glyph(code, day), text(((Number) row[1]).doubleValue(), place));
+    }
+
+    /** "14° Takizawa", or "14°" with no place: the launcher's own degree, no unit letter. */
+    static String text(double temperature, String place) {
+        String degrees = Math.round(temperature) + "\u00B0";
+        return place == null || place.isEmpty() ? degrees : degrees + " " + place;
+    }
+
+    /** One glyph per WMO group the add-on can publish; a code we do not know leaves the line without one. */
+    static String glyph(int code, boolean day) {
+        switch (code) {
+            case 0: case 1: return day ? "☀" : "☾";                 // clear, mainly clear
+            case 2: return "⛅";                                     // partly cloudy
+            case 3: return "☁";                                     // overcast
+            case 45: case 48: return "≡";                           // fog
+            case 51: case 53: case 55: case 56: case 57: return "☂"; // drizzle, freezing drizzle
+            case 61: case 63: case 65: case 66: case 67: return "☔"; // rain, freezing rain
+            case 71: case 73: case 75: case 77: case 85: case 86: return "❄"; // snow, snow showers
+            case 80: case 81: case 82: return "☔";                   // rain showers
+            case 95: case 96: case 99: return "⚡";                   // thunderstorm, with hail
+            default: return "";
+        }
+    }
+
+    /**
+     * True while a claim still belongs to the session Home is showing. {@link #read()} asks this at the
+     * worker's entry and again at delivery, so a stop - or a stop and a fresh start - declines the result
+     * the previous session asked for.
+     */
+    static boolean owned(boolean active, int claimed, int generation) {
+        return active && claimed == generation;
+    }
+
+    /** The line to show, or null for none: no key, no add-on, or nothing fresh published yet. */
+    Line line() {
+        return line;
+    }
+
+    /** One row under the clock: the sky's glyph and "14° Takizawa". */
+    static final class Line {
+        final String glyph;
+        final String text;
+
+        Line(String glyph, String text) {
+            this.glyph = glyph;
+            this.text = text;
+        }
+    }
+}

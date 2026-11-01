@@ -203,6 +203,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private GameDay gameDay;
     private View raceBar;
     private LinearLayout racePager;
+
+    /** weather_now: the add-on that publishes the line under the clock; null when no key or no add-on. */
+    private WeatherNow weatherNow;
+    private View weatherRow;
+    private TextView weatherIcon, weatherText;
     private long rotationStart;
     private long lastEndedRead;
     private final Runnable turnTick = this::updatePanel;
@@ -573,7 +578,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         raceSessions = findViewById(R.id.raceSessions);
         raceBar = findViewById(R.id.raceBar);
         racePager = findViewById(R.id.racePager);
+        weatherRow = findViewById(R.id.weatherRow);
+        weatherIcon = findViewById(R.id.weatherIcon);
+        weatherText = findViewById(R.id.weatherText);
         gameDay = GameDay.create(this, cfg.gameDay, handler, this::updatePanel);
+        weatherNow = WeatherNow.create(this, cfg.weatherNow, handler, this::updateWeather);
         // The rotation runs on the clock that never jumps: setting the TV's time must not stall or stretch a turn.
         rotationStart = SystemClock.elapsedRealtime();
         showStats = cfg.showStats;
@@ -1125,6 +1134,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (showStats) startStats();
         if (gameDay != null) gameDay.start();
+        if (weatherNow != null) weatherNow.start();
         sky.update();
         wallpaperPlayer.start();
         handler.postDelayed(minuteTick, MINUTE_MS);
@@ -1310,6 +1320,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         startPending = null;   // leaving Home before the network came back: the boot's app stays closed
         stopStats();
         if (gameDay != null) gameDay.stop();
+        if (weatherNow != null) weatherNow.stop();
         handler.removeCallbacks(turnTick);
         if (lamp != null) lamp.stop();
         cancelPendingFocusScroll();
@@ -1369,6 +1380,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RemoteKeys.release(this);
         cancelHoldOk();
         if (gameDay != null) gameDay.shutdown();
+        if (weatherNow != null) weatherNow.shutdown();
         unregisterReceiver(packageReceiver);
         if (openOnStartOnWake) unregisterReceiver(wakeReceiver);
         wallpaperPlayer.close();
@@ -1379,6 +1391,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cm.unregisterNetworkCallback(networkCallback);
             cm.unregisterNetworkCallback(vpnCallback);
         }
+    }
+
+    /**
+     * The weather line under the clock: whatever the add-on named by weather_now publishes. No key, no
+     * add-on, or nothing fresh published yet keeps the row gone.
+     */
+    private void updateWeather() {
+        if (weatherRow == null) return;
+        WeatherNow.Line line = weatherNow == null ? null : weatherNow.line();
+        if (line == null) {
+            weatherRow.setVisibility(View.GONE);
+            return;
+        }
+        weatherIcon.setText(line.glyph);
+        weatherText.setText(line.text);
+        weatherRow.setVisibility(View.VISIBLE);
     }
 
     /**
