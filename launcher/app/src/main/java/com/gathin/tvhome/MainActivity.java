@@ -444,6 +444,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (festive) updateWifiLabel();
             sky.update();
             wallpaperPlayer.update();
+            // The weather row was fresh when it was read, but a TV can sit on Home all evening: once it has
+            // outlived its three hours, take it away here and ask the add-on once more, so a reading published
+            // meanwhile (or a query that failed at the time) gets its chance. No further reads until it does.
+            if (weatherNow != null && weatherNow.expireIfStale()) {
+                updateWeather();
+                weatherNow.read();
+            }
             handler.postDelayed(this, MINUTE_MS);
         }
     };

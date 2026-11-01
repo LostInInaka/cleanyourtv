@@ -23,15 +23,23 @@ add-on can serve both forks rather than two that drift apart: `place`, `temperat
 "°", then the place; a reading older than three hours hides the row, and so does an empty key, so a TV
 without the add-on looks exactly as it did.
 
-Two things the upstream attempt did not get right are fixed here:
+Two things the upstream attempt did not get right are fixed here, and one of them the earlier patch only half fixed:
 
-- **A paused Home cannot apply a stale reading.** Stopping the observer bumps a generation, and a query that
-  was already running or already posted declines itself at the worker *and* at delivery, so a stop → start
-  never shows the previous session's line.
+- **A late result from a dead session is never applied.** Stopping the observer bumps a generation, and a query
+  that was already running or already posted declines itself at the worker *and* at delivery. Note the limit
+  of that claim: the line already on screen stays there until the next query lands, because `stop()` and
+  `start()` do not clear it. What is guaranteed is narrower — a result asked for by a session that has gone
+  cannot take the screen from a later one. The predicate and the generation check are unit-tested;
+  what plain JUnit cannot drive — a real `Handler` and a fake resolver — still rests on inspection.
 - **A reading belongs to the place it was fetched for.** Picking another city while a fetch is in flight
   publishes nothing under the new name: the worker freezes the place, the coordinates and a selection
   generation when the request is made, stores only while that generation is current, and hands an overtaken
-  fetch off to the newest city — including when the overtaken one failed.
+  fetch off to the newest city — including when the overtaken one failed or answered with nothing. This half
+  *is* tested, on real threads: defeating the selection gate fails five cases, and the handoff has its own
+  case for a failed fetch and for an empty one.
+- **The row cannot outlive its three hours.** A reading that was fresh when Home read it is withdrawn on the
+  next minute tick once it is older, and the add-on is asked once more so a new reading can take its place —
+  otherwise a TV left on Home would show a nine o'clock reading at midnight.
 
 ## Install
 

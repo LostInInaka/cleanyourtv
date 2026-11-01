@@ -169,11 +169,31 @@ final class WeatherNow {
      */
     static Line fromRow(Object[] row, long nowMs) {
         if (row == null || !(row[1] instanceof Number) || !(row[5] instanceof Number)) return null;
-        if (nowMs - ((Number) row[5]).longValue() > FRESH_MS) return null;
+        long updated = ((Number) row[5]).longValue();
+        if (nowMs - updated > FRESH_MS) return null;
         String place = row[0] instanceof String ? ((String) row[0]).trim() : "";
         int code = row[3] instanceof Number ? ((Number) row[3]).intValue() : -1;
         boolean day = !(row[4] instanceof Number) || ((Number) row[4]).intValue() != 0;
-        return new Line(glyph(code, day), text(((Number) row[1]).doubleValue(), place));
+        return new Line(glyph(code, day), text(((Number) row[1]).doubleValue(), place), updated);
+    }
+
+    /**
+     * True once a line that was shown has outlived {@link #FRESH_MS}. The row was fresh when it was read, but
+     * Home can stay on screen for hours: without this a reading fetched at nine in the morning would still be
+     * under the clock at midnight, which is the one thing the three-hour rule exists to prevent.
+     */
+    static boolean expired(Line shown, long nowMs) {
+        return shown != null && nowMs - shown.updated > FRESH_MS;
+    }
+
+    /**
+     * Drop a line that has aged out, and say whether it was there to drop. The caller hides the row and reads
+     * again, so an add-on that has published meanwhile can put it back; nothing re-reads until it does.
+     */
+    boolean expireIfStale() {
+        if (!expired(line, System.currentTimeMillis())) return false;
+        line = null;
+        return true;
     }
 
     /** "14° Takizawa", or "14°" with no place: the launcher's own degree, no unit letter. */
@@ -216,10 +236,13 @@ final class WeatherNow {
     static final class Line {
         final String glyph;
         final String text;
+        /** When the add-on took the reading, so the row can be withdrawn once it is older than the contract allows. */
+        final long updated;
 
-        Line(String glyph, String text) {
+        Line(String glyph, String text, long updated) {
             this.glyph = glyph;
             this.text = text;
+            this.updated = updated;
         }
     }
 }

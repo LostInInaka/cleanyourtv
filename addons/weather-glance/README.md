@@ -13,7 +13,10 @@ add-on's.
 ## Set it up
 
 1. Install the APK (below) and open **Weather Glance** from the app grid.
-2. Search for your city and pick it from the list — the screen shows the line Home will draw.
+2. Search for your city and pick it from the list. The screen shows the reading the add-on publishes, in
+   its own wording ("10° Overcast · TAKIZAWA" — this screen upper-cases the place); Home draws its own
+   line from the same columns, so it reads "☁ 10° Takizawa" — the sky symbol, its own degree, and the
+   place in the case the add-on sent, which for this add-on is plain title case.
 3. Tell the launcher to read it: put the package in the `weather_now` key, in `config.xml` or in a theme's
    `config.json`:
 
@@ -24,9 +27,9 @@ add-on's.
    Push the theme as usual (`tools/theme.sh <theme folder>`). Empty, uninstalled or a package that publishes
    nothing means no line at all — nothing to clean up.
 
-The reading refreshes when the app's own screen is open, and when Home starts or reads a reading older than
-20 minutes; the app answers from its cache and then notifies Home, so a slow network never holds up Home's
-first frame.
+The reading refreshes while the app's own screen is open, and whenever Home asks for one that is more than
+20 minutes old; Home's query is answered from the cache first and the app then notifies it when a newer
+reading lands, so a slow network never holds up Home's first frame.
 
 ## What it publishes
 

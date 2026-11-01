@@ -102,4 +102,21 @@ public class WeatherNowTest {
         assertFalse(WeatherNow.owned(true, 7, 8));
         assertTrue(WeatherNow.owned(true, 8, 8));
     }
+
+    @Test public void aLineCarriesTheTimeTheAddOnTookTheReading() {
+        // The time has to survive the read, or a row already on screen cannot be judged later.
+        assertEquals(NOW - 60_000L, fresh("Takizawa", 14.4, 3, 1).updated);
+    }
+
+    @Test public void aRowThatAgesWhileHomeStaysUpIsWithdrawn() {
+        // A reading is fresh when it is read, but Home can stay on screen for hours: the row goes when its own
+        // three hours are up, not only when it is next fetched. Exactly three hours is still shown, as it is
+        // on the way in.
+        WeatherNow.Line shown = fresh("Takizawa", 14.4, 3, 1);
+        long at = shown.updated;
+        assertFalse(WeatherNow.expired(shown, at + 3 * HOUR));
+        assertTrue(WeatherNow.expired(shown, at + 3 * HOUR + 1));
+        // Nothing on screen is nothing to withdraw.
+        assertFalse(WeatherNow.expired(null, at + 24 * HOUR));
+    }
 }

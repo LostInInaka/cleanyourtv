@@ -165,7 +165,12 @@ empty key means no line at all.
    ```
 
    The provider must belong to the package the owner named; the launcher ignores an authority another app
-   holds.
+   holds. Your app also has to be *visible* to the launcher. It asks the package manager about the package
+   the owner named, and from Android 11 that only answers for apps matching the launcher's own `<queries>`:
+   an app with a `LAUNCHER`, `LEANBACK_LAUNCHER`, `DOCK_CARD` or `HOME` activity, or one that ships a card.
+   Every add-on here has a launcher activity, so this costs nothing in practice — but an app that ships only
+   a provider, and no activity of those kinds, is invisible and the row never appears. There is nothing you
+   can declare in *your* manifest to fix that; the filter lives in the launcher's.
 
 2. Answer a query on `content://<authority>/now` with one row and these columns:
 
@@ -182,9 +187,9 @@ empty key means no line at all.
    permission, so it must hold no coordinates, accounts or other private data. Columns are read by name,
    so their order does not matter.
 
-3. Call `notifyChange` on that URI when a new reading arrives. Home queries when it comes back and on each
-   change, and watches only while it is on screen; a query is the app's cue to refresh a reading that is
-   getting old.
+3. Call `notifyChange` on that URI when a new reading arrives. Home queries when it comes back, on each
+   change, and again if the line it is holding passes three hours while Home stays on screen; it watches
+   only while it is on screen, and a query is the app's cue to refresh a reading that is getting old.
 
 A reading belongs to the place it was fetched for: if the person picks another city while a fetch is still
 running, the running fetch must not publish under the new city's name. Publish only while the selection it
