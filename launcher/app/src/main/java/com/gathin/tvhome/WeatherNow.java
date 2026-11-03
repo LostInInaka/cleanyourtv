@@ -219,7 +219,7 @@ final class WeatherNow {
 
     /**
      * "14° Takizawa", or "14°" with no place: the launcher's own degree, no unit letter. The optional sky goes
-     * after the place ("14° Takizawa · Cloudy") and humidity last (" · Humidity 90 %"), each dropped when the
+     * after the place ("14° Takizawa · Cloudy") and humidity last (" · Humidity 90%"), each dropped when the
      * add-on does not publish it.
      */
     static String text(double temperature, String place) {
@@ -240,13 +240,13 @@ final class WeatherNow {
         if (place != null && !place.isEmpty()) out.append(' ').append(place);
         if (sky != null && !sky.isEmpty()) out.append(" \u00B7 ").append(sky);
         // Under a sky that already says snow, a figure below the threshold is not replaced by a figure for rain:
-        // "Snow · Rain 40 %" argues with itself, so the line just says snow and leaves the odds alone.
+        // "Snow · Rain 40%" argues with itself, so the line just says snow and leaves the odds alone.
         if (snowChance >= WORTH_MENTIONING && snowChance <= 100) {
             percent(out, sky, "snow", snowChance);
         } else if (precipChance >= WORTH_MENTIONING && precipChance <= 100 && !names(sky, "snow")) {
             percent(out, sky, "rain", precipChance);
         }
-        if (humidity >= 0 && humidity <= 100) out.append(" \u00B7 Humidity ").append(humidity).append(" %");
+        if (humidity >= 0 && humidity <= 100) out.append(" \u00B7 Humidity ").append(humidity).append("%");
         return out.toString();
     }
 
@@ -281,14 +281,14 @@ final class WeatherNow {
     }
 
     /**
-     * Appends the chance, without saying "snow" twice when the sky has already said it: "Snow \u00B7 70 %", not
-     * "Snow \u00B7 Snow 70 %".
+     * Appends the chance, without saying "snow" twice when the sky has already said it: "Snow \u00B7 70%", not
+     * "Snow \u00B7 Snow 70%".
      */
     private static void percent(StringBuilder out, String sky, String word, int value) {
         boolean said = names(sky, word);
         out.append(" \u00B7 ");
         if (!said) out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1)).append(' ');
-        out.append(value).append(" %");
+        out.append(value).append("%");
     }
 
     /** Whether the sky's own wording already contains this word, case aside. */

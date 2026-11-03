@@ -47,7 +47,7 @@ names, read by name:
 | `is_day` | `1` when the sun is up at the city, `0` at night |
 | `updated_ms` | when the reading was fetched |
 | `sky` | the sky in words, e.g. `Overcast`, so the line can read the weather as well as draw it |
-| `humidity` | relative humidity in percent, drawn as `Humidity 57 %` |
+| `humidity` | relative humidity in percent, drawn as `Humidity 57%` |
 | `precipitation_chance` | chance of precipitation in percent, from Open-Meteo's `precipitation_probability` |
 | `snow_chance` | the same figure, but only when the forecast says snow — `null` otherwise |
 
@@ -64,9 +64,9 @@ changed is thrown away rather than stored — not even with a fresh timestamp.
 - One line, about 30 characters before the date column gets crowded: `☁ 14° Takizawa`.
 - The glyph from the WMO `code` and `is_day` (`☀ ☁ ☂ ❄ ⚡`, a moon for a clear night). Text glyphs, not
   emoji: a TV's system font may have no colour emoji, and a tofu box under the clock is worse than no line.
-- The optional parts, in this order: `☀ 14° Takizawa · Mostly clear · Rain 60 % · Humidity 57 %`. A chance
-  of rain or snow appears only from 30 % upward — below that it is noise under a clock — and when the sky
-  already says "Snow" or "Rain" the word is not repeated: `❄ 1° Takizawa · Snow · 70 %`.
+- The optional parts, in this order: `☀ 14° Takizawa · Mostly clear · Rain 60% · Humidity 57%`. A chance
+  of rain or snow appears only from 30% upward — below that it is noise under a clock — and when the sky
+  already says "Snow" or "Rain" the word is not repeated: `❄ 1° Takizawa · Snow · 70%`.
 - No line at all until a city is picked, when the network is down and nothing was ever fetched, when the
   reading is more than three hours old, or when Home's `weather_now` names something else.
 

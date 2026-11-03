@@ -37,29 +37,29 @@ public class WeatherNowTest {
 
     @Test public void theOptionalSkyAndHumidityRideAlongAndDropWhenAbsent() {
         assertEquals("14\u00B0 Takizawa \u00B7 Cloudy", WeatherNow.text(14.4, "Takizawa", "Cloudy", -1));
-        assertEquals("14\u00B0 Takizawa \u00B7 Humidity 90 %", WeatherNow.text(14.4, "Takizawa", "", 90));
-        assertEquals("14\u00B0 Takizawa \u00B7 Cloudy \u00B7 Humidity 90 %",
+        assertEquals("14\u00B0 Takizawa \u00B7 Humidity 90%", WeatherNow.text(14.4, "Takizawa", "", 90));
+        assertEquals("14\u00B0 Takizawa \u00B7 Cloudy \u00B7 Humidity 90%",
                 WeatherNow.text(14.4, "Takizawa", "Cloudy", 90));
         // An add-on that publishes only the six columns draws exactly what it drew before.
         assertEquals("14\u00B0 Takizawa", WeatherNow.text(14.4, "Takizawa", "", -1));
-        // Out of range means "not published", not "0 %".
+        // Out of range means "not published", not "0%".
         assertEquals("14\u00B0", WeatherNow.text(14.4, "", "", 140));
     }
 
     @Test public void aChanceOfRainOnlyShowsWhenItIsWorthCarryingAnUmbrella() {
-        // Quiet below the threshold, spoken at and above it: 29 % is noise, 30 % is a coat.
+        // Quiet below the threshold, spoken at and above it: 29% is noise, 30% is a coat.
         assertEquals("14\u00B0 Takizawa", WeatherNow.text(14.4, "Takizawa", "", -1, 29, -1));
-        assertEquals("14\u00B0 Takizawa \u00B7 Rain 30 %", WeatherNow.text(14.4, "Takizawa", "", -1, 30, -1));
-        assertEquals("14\u00B0 Takizawa \u00B7 Rain 80 %", WeatherNow.text(14.4, "Takizawa", "", -1, 80, -1));
+        assertEquals("14\u00B0 Takizawa \u00B7 Rain 30%", WeatherNow.text(14.4, "Takizawa", "", -1, 30, -1));
+        assertEquals("14\u00B0 Takizawa \u00B7 Rain 80%", WeatherNow.text(14.4, "Takizawa", "", -1, 80, -1));
     }
 
     @Test public void snowIsTheFigureTheViewerIsDecidingAbout() {
         // Both published: the snow figure speaks, and the rain figure steps aside rather than doubling up.
-        assertEquals("1\u00B0 Takizawa \u00B7 Snow \u00B7 70 %", WeatherNow.text(0.6, "Takizawa", "Snow", -1, 70, 70));
+        assertEquals("1\u00B0 Takizawa \u00B7 Snow \u00B7 70%", WeatherNow.text(0.6, "Takizawa", "Snow", -1, 70, 70));
         // The sky does not name it, so the word has to be said.
-        assertEquals("1\u00B0 Takizawa \u00B7 Overcast \u00B7 Snow 70 %", WeatherNow.text(0.6, "Takizawa", "Overcast", -1, 40, 70));
+        assertEquals("1\u00B0 Takizawa \u00B7 Overcast \u00B7 Snow 70%", WeatherNow.text(0.6, "Takizawa", "Overcast", -1, 40, 70));
         // A sky that already says rain does not get a second "Rain".
-        assertEquals("8\u00B0 Takizawa \u00B7 Rain \u00B7 60 %", WeatherNow.text(8.2, "Takizawa", "Rain", -1, 60, -1));
+        assertEquals("8\u00B0 Takizawa \u00B7 Rain \u00B7 60%", WeatherNow.text(8.2, "Takizawa", "Rain", -1, 60, -1));
         // Snow in the sky but barely likely, while rain is likelier: the line says snow and leaves the odds alone
         // rather than arguing with itself at 1 degree.
         assertEquals("1\u00B0 Takizawa \u00B7 Snow", WeatherNow.text(0.6, "Takizawa", "Snow", -1, 40, 20));
@@ -68,7 +68,7 @@ public class WeatherNowTest {
     }
 
     @Test public void theChanceRidesAfterTheSkyAndBeforeTheHumidity() {
-        assertEquals("8\u00B0 Takizawa \u00B7 Clear \u00B7 Rain 60 % \u00B7 Humidity 57 %",
+        assertEquals("8\u00B0 Takizawa \u00B7 Clear \u00B7 Rain 60% \u00B7 Humidity 57%",
                 WeatherNow.text(8.2, "Takizawa", "Clear", 57, 60, -1));
     }
 
