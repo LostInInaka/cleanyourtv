@@ -64,6 +64,8 @@ changed is thrown away rather than stored — not even with a fresh timestamp.
 - One line, about 30 characters before the date column gets crowded: `☁ 14° Takizawa`.
 - The glyph from the WMO `code` and `is_day` (`☀ ☁ ☂ ❄ ⚡`, a moon for a clear night). Text glyphs, not
   emoji: a TV's system font may have no colour emoji, and a tofu box under the clock is worse than no line.
+  Each one carries U+FE0E, the text presentation selector, because `☀ ☔ ⚡ ❄` are emoji by default on a panel
+  that ships NotoColorEmoji — without it, a cartoon umbrella turns up beside a plain line of type.
 - The optional parts, in this order: `☀ 14° Takizawa · Mostly clear · Rain 60% · Humidity 57%`. A chance
   the reading publishes is always drawn, 0% included — the launcher keeps no threshold of its own — and when
   the sky already says "Snow" or "Rain" the word is not repeated: `❄ 1° Takizawa · Snow · 70%`. It decides

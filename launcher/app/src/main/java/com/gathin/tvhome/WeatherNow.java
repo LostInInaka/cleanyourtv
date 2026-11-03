@@ -272,20 +272,29 @@ final class WeatherNow {
         return out.toString();
     }
 
+    /**
+     * U+FE0E, the text presentation selector: several of these symbols are emoji by default, and a panel that
+     * carries NotoColorEmoji will draw a cartoon umbrella next to a plain line of type without it. One character,
+     * no bytes of artwork, and the glyph inherits the text colour the way the rest of the line does.
+     */
+    private static final String PLAIN = "\uFE0E";
+
     /** One glyph per WMO group the add-on can publish; a code we do not know leaves the line without one. */
     static String glyph(int code, boolean day) {
+        String g;
         switch (code) {
-            case 0: case 1: return day ? "☀" : "☾";                 // clear, mainly clear
-            case 2: return "⛅";                                     // partly cloudy
-            case 3: return "☁";                                     // overcast
-            case 45: case 48: return "≡";                           // fog
-            case 51: case 53: case 55: case 56: case 57: return "☂"; // drizzle, freezing drizzle
-            case 61: case 63: case 65: case 66: case 67: return "☔"; // rain, freezing rain
-            case 71: case 73: case 75: case 77: case 85: case 86: return "❄"; // snow, snow showers
-            case 80: case 81: case 82: return "☔";                   // rain showers
-            case 95: case 96: case 99: return "⚡";                   // thunderstorm, with hail
+            case 0: case 1: g = day ? "\u2600" : "\u263E"; break;        // clear, mainly clear
+            case 2: g = "\u26C5"; break;                                  // partly cloudy
+            case 3: g = "\u2601"; break;                                  // overcast
+            case 45: case 48: g = "\u2261"; break;                        // fog
+            case 51: case 53: case 55: case 56: case 57: g = "\u2602"; break; // drizzle, freezing drizzle
+            case 61: case 63: case 65: case 66: case 67: g = "\u2614"; break; // rain, freezing rain
+            case 71: case 73: case 75: case 77: case 85: case 86: g = "\u2744"; break; // snow, snow showers
+            case 80: case 81: case 82: g = "\u2614"; break;               // rain showers
+            case 95: case 96: case 99: g = "\u26A1"; break;               // thunderstorm, with hail
             default: return "";
         }
+        return g + PLAIN;
     }
 
     /**

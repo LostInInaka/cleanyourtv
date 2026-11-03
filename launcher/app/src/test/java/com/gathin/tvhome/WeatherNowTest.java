@@ -24,7 +24,7 @@ public class WeatherNowTest {
     @Test public void theLineReadsSkyTemperatureAndPlace() {
         WeatherNow.Line line = fresh("Takizawa", 14.4, 3, 1);
         assertNotNull(line);
-        assertEquals("☁", line.glyph);
+        assertEquals("☁\uFE0E", line.glyph);
         assertEquals("14° Takizawa", line.text);
     }
 
@@ -93,18 +93,18 @@ public class WeatherNowTest {
     }
 
     @Test public void theNightSkiesGetTheMoon() {
-        assertEquals("☀", WeatherNow.glyph(0, true));
-        assertEquals("☾", WeatherNow.glyph(0, false));
-        assertEquals("☀", WeatherNow.glyph(1, true));
-        assertEquals("☾", WeatherNow.glyph(1, false));
+        assertEquals("☀\uFE0E", WeatherNow.glyph(0, true));
+        assertEquals("☾\uFE0E", WeatherNow.glyph(0, false));
+        assertEquals("☀\uFE0E", WeatherNow.glyph(1, true));
+        assertEquals("☾\uFE0E", WeatherNow.glyph(1, false));
         // Everything below is the same by day and by night.
-        assertEquals("⛅", WeatherNow.glyph(2, true));
-        assertEquals("⛅", WeatherNow.glyph(2, false));
-        assertEquals("≡", WeatherNow.glyph(48, true));
-        assertEquals("☂", WeatherNow.glyph(55, false));
-        assertEquals("☔", WeatherNow.glyph(65, true));
-        assertEquals("❄", WeatherNow.glyph(86, false));
-        assertEquals("⚡", WeatherNow.glyph(99, true));
+        assertEquals("⛅\uFE0E", WeatherNow.glyph(2, true));
+        assertEquals("⛅\uFE0E", WeatherNow.glyph(2, false));
+        assertEquals("≡\uFE0E", WeatherNow.glyph(48, true));
+        assertEquals("☂\uFE0E", WeatherNow.glyph(55, false));
+        assertEquals("☔\uFE0E", WeatherNow.glyph(65, true));
+        assertEquals("❄\uFE0E", WeatherNow.glyph(86, false));
+        assertEquals("⚡\uFE0E", WeatherNow.glyph(99, true));
     }
 
     @Test public void aCodeTheLauncherDoesNotKnowStillLeavesTheTemperature() {
