@@ -50,7 +50,8 @@ final class Refresh {
         }
 
         @Override public boolean save(Selections.Pick forPick, OpenMeteo.Now reading, long updatedMs) {
-            return store.saveReading(forPick, reading.celsius, reading.code, reading.day, updatedMs, reading.humidity);
+            return store.saveReading(forPick, reading.celsius, reading.code, reading.day, updatedMs, reading.humidity,
+                    reading.precipChance, reading.snowChance);
         }
 
         @Override public void notifyReaders() {

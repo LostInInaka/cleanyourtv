@@ -115,18 +115,43 @@ final class Store {
 
     /** As above, with the humidity the reading came with: -1 stores nothing, so an older add-on's data still fits. */
     boolean saveReading(Selections.Pick forPick, int celsius, int code, boolean day, long updatedMs, int humidity) {
+        return saveReading(forPick, celsius, code, day, updatedMs, humidity, -1, -1);
+    }
+
+    /**
+     * The full reading. Every optional figure is written when it is a percentage and cleared when it is not, so a
+     * reading taken under a clear sky cannot leave yesterday's chance of rain sitting in the preferences.
+     */
+    boolean saveReading(Selections.Pick forPick, int celsius, int code, boolean day, long updatedMs, int humidity,
+                        int precipChance, int snowChance) {
         return selections.accept(forPick, () -> {
             SharedPreferences.Editor e = p.edit()
                     .putInt("temperature", celsius).putInt("code", code)
                     .putBoolean("day", day).putLong("updated", updatedMs);
-            if (humidity >= 0 && humidity <= 100) e.putInt("humidity", humidity); else e.remove("humidity");
+            putPercentOrClear(e, "humidity", humidity);
+            putPercentOrClear(e, "precip", precipChance);
+            putPercentOrClear(e, "snow", snowChance);
             e.apply();
         });
+    }
+
+    private static void putPercentOrClear(SharedPreferences.Editor e, String key, int percent) {
+        if (percent >= 0 && percent <= 100) e.putInt(key, percent); else e.remove(key);
     }
 
     /** Relative humidity in percent, or -1 when this reading has none. */
     int humidity() {
         return p.getInt("humidity", -1);
+    }
+
+    /** Chance of precipitation in percent, or -1 when this reading has none. */
+    int precipChance() {
+        return p.getInt("precip", -1);
+    }
+
+    /** Chance of snow in percent, or -1 when the forecast is not for snow. */
+    int snowChance() {
+        return p.getInt("snow", -1);
     }
 
     private double number(String key) {

@@ -28,6 +28,17 @@ final class Conditions {
     }
 
     /**
+     * Whether this code means frozen precipitation. Open-Meteo publishes no snow probability, so the add-on only
+     * claims one when the forecast itself says snow: a snow code, or snowfall in the current reading.
+     */
+    static boolean isSnow(int code) {
+        switch (code) {
+            case 71: case 73: case 75: case 77: case 85: case 86: return true;
+            default: return false;
+        }
+    }
+
+    /**
      * The line under the clock, in the launcher's small-caps style: "14\u00B0 DRIZZLE \u00B7 TAKIZAWA". The place is
      * optional; a line without one is just the temperature and the wording.
      */

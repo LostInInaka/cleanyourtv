@@ -22,7 +22,8 @@ public final class WeatherProvider extends ContentProvider {
     static final String AUTHORITY = "io.github.lostininaka.weatherglance.now";
     static final Uri NOW = Uri.parse("content://" + AUTHORITY + "/now");
     private static final String[] COLUMNS =
-            {"_id", "place", "temperature", "unit", "code", "is_day", "updated_ms", "sky", "humidity"};
+            {"_id", "place", "temperature", "unit", "code", "is_day", "updated_ms", "sky", "humidity",
+                    "precipitation_chance", "snow_chance"};
 
     @Override
     public boolean onCreate() {
@@ -55,6 +56,8 @@ public final class WeatherProvider extends ContentProvider {
                     int humidity = store.humidity();
                     row.add(humidity >= 0 ? humidity : null);
                 }
+                else if ("precipitation_chance".equals(column)) row.add(percent(store.precipChance()));
+                else if ("snow_chance".equals(column)) row.add(percent(store.snowChance()));
                 else row.add(null);
             }
         }
@@ -80,5 +83,10 @@ public final class WeatherProvider extends ContentProvider {
     @Override
     public int update(Uri uri, ContentValues values, String selection, String[] args) {
         throw new UnsupportedOperationException("read-only: the launcher never writes here");
+    }
+
+    /** A percentage, or null when there is none: a null column is how the launcher is told to drop that part. */
+    private static Integer percent(int value) {
+        return value >= 0 && value <= 100 ? value : null;
     }
 }

@@ -182,10 +182,15 @@ empty key means no line at all.
    | `code` | integer | The WMO weather code, which picks the sky symbol |
    | `is_day` | integer | 1 by day, 0 at night (a moon for a clear night) |
    | `updated_ms` | integer | Epoch milliseconds of the reading. A row without it, or older than three hours, hides the line |
+   | `sky` | text | *Optional.* The sky in words, e.g. `Overcast`, shown after the temperature |
+   | `humidity` | integer | *Optional.* Relative humidity in percent, shown as `Humidity 57 %` |
+   | `precipitation_chance` | integer | *Optional.* Chance of precipitation in percent, shown as `Rain 60 %` from 30 % upward |
+   | `snow_chance` | integer | *Optional.* Chance of snow in percent; it wins over the rain figure and the word is not repeated when the sky already says snow |
 
-   An empty cursor hides the line. Keep it to what Home shows: the provider is exported without a
-   permission, so it must hold no coordinates, accounts or other private data. Columns are read by name,
-   so their order does not matter.
+   An empty cursor hides the line, and so does a `null` in any of the optional columns for whichever part
+   it feeds: the four after `updated_ms` are there for a provider that can do better, not as a requirement.
+   Keep it to what Home shows: the provider is exported without a permission, so it must hold no
+   coordinates, accounts or other private data. Columns are read by name, so their order does not matter.
 
 3. Call `notifyChange` on that URI when a new reading arrives. Home queries when it comes back, on each
    change, and again if the line it is holding passes three hours while Home stays on screen; it watches

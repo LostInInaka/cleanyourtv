@@ -22,13 +22,16 @@ import java.util.concurrent.RejectedExecutionException;
 final class WeatherNow {
     static final String META = "com.gathin.tvhome.weather";
     /** A reading older than this one is yesterday's weather: the row goes rather than say something stale. */
+    /** Below this a chance of rain is noise under the clock; at or above it, the viewer may want a coat. */
+    static final int WORTH_MENTIONING = 30;
+
     static final long FRESH_MS = 3 * 60 * 60 * 1000L;
     /**
      * The add-on's contract, asked for exactly: place, temperature, unit, code, is_day, updated_ms. `unit` is
      * C or F and is never drawn - the launcher prints its own degree - but the query asks for it as agreed.
      */
     private static final String[] COLUMNS = {"place", "temperature", "unit", "code", "is_day", "updated_ms",
-            "sky", "humidity"};   // the last two are optional: a provider that does not publish them still draws
+            "sky", "humidity", "precipitation_chance", "snow_chance"};   // the last two are optional: a provider that does not publish them still draws
 
     private final Context ctx;
     private final Uri uri;
@@ -166,6 +169,10 @@ final class WeatherNow {
             if (at >= 0) row[6] = c.getString(at);
             at = c.getColumnIndex("humidity");
             if (at >= 0) row[7] = c.getInt(at);
+            at = c.getColumnIndex("precipitation_chance");
+            if (at >= 0) row[8] = c.getInt(at);
+            at = c.getColumnIndex("snow_chance");
+            if (at >= 0) row[9] = c.getInt(at);
             return row;
         }
     }
@@ -185,7 +192,10 @@ final class WeatherNow {
         // has no optional parts.
         String sky = row.length > 6 && row[6] instanceof String ? ((String) row[6]).trim() : "";
         int humidity = row.length > 7 && row[7] instanceof Number ? ((Number) row[7]).intValue() : -1;
-        return new Line(glyph(code, day), text(((Number) row[1]).doubleValue(), place, sky, humidity), updated);
+        int precipChance = row.length > 8 && row[8] instanceof Number ? ((Number) row[8]).intValue() : -1;
+        int snowChance = row.length > 9 && row[9] instanceof Number ? ((Number) row[9]).intValue() : -1;
+        return new Line(glyph(code, day),
+                text(((Number) row[1]).doubleValue(), place, sky, humidity, precipChance, snowChance), updated);
     }
 
     /**
@@ -213,13 +223,29 @@ final class WeatherNow {
      * add-on does not publish it.
      */
     static String text(double temperature, String place) {
-        return text(temperature, place, "", -1);
+        return text(temperature, place, "", -1, -1, -1);
     }
 
     static String text(double temperature, String place, String sky, int humidity) {
+        return text(temperature, place, sky, humidity, -1, -1);
+    }
+
+    /**
+     * A chance of rain is only worth a line when it is worth carrying an umbrella, so the launcher stays quiet
+     * below {@link #WORTH_MENTIONING}. Snow wins over rain: when the forecast says snow, the snow figure is the
+     * one the viewer is deciding about.
+     */
+    static String text(double temperature, String place, String sky, int humidity, int precipChance, int snowChance) {
         StringBuilder out = new StringBuilder(Math.round(temperature) + "\u00B0");
         if (place != null && !place.isEmpty()) out.append(' ').append(place);
         if (sky != null && !sky.isEmpty()) out.append(" \u00B7 ").append(sky);
+        // Under a sky that already says snow, a figure below the threshold is not replaced by a figure for rain:
+        // "Snow · Rain 40 %" argues with itself, so the line just says snow and leaves the odds alone.
+        if (snowChance >= WORTH_MENTIONING && snowChance <= 100) {
+            percent(out, sky, "snow", snowChance);
+        } else if (precipChance >= WORTH_MENTIONING && precipChance <= 100 && !names(sky, "snow")) {
+            percent(out, sky, "rain", precipChance);
+        }
         if (humidity >= 0 && humidity <= 100) out.append(" \u00B7 Humidity ").append(humidity).append(" %");
         return out.toString();
     }
@@ -252,6 +278,22 @@ final class WeatherNow {
     /** The line to show, or null for none: no key, no add-on, or nothing fresh published yet. */
     Line line() {
         return line;
+    }
+
+    /**
+     * Appends the chance, without saying "snow" twice when the sky has already said it: "Snow \u00B7 70 %", not
+     * "Snow \u00B7 Snow 70 %".
+     */
+    private static void percent(StringBuilder out, String sky, String word, int value) {
+        boolean said = names(sky, word);
+        out.append(" \u00B7 ");
+        if (!said) out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1)).append(' ');
+        out.append(value).append(" %");
+    }
+
+    /** Whether the sky's own wording already contains this word, case aside. */
+    private static boolean names(String sky, String word) {
+        return sky != null && sky.toLowerCase(java.util.Locale.ROOT).contains(word);
     }
 
     /** One row under the clock: the sky's glyph and "14° Takizawa". */
