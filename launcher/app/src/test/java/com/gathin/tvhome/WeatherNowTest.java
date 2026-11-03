@@ -46,10 +46,10 @@ public class WeatherNowTest {
         assertEquals("14\u00B0", WeatherNow.text(14.4, "", "", 140));
     }
 
-    @Test public void aPublishedChanceIsDrawnWhetherItIsLikelyOrNot() {
-        // No threshold of our own: 0% is what the sky says, and the line repeats it rather than deciding for us.
-        assertEquals("14\u00B0 Takizawa \u00B7 Rain 0%", WeatherNow.text(14.4, "Takizawa", "", -1, 0, -1));
-        assertEquals("14\u00B0 Takizawa \u00B7 Rain 29%", WeatherNow.text(14.4, "Takizawa", "", -1, 29, -1));
+    @Test public void aChanceIsDrawnOnlyOnceItIsWorthCarryingAnUmbrella() {
+        // 0% and 29% are noise under a clock; 30% is a coat. The owner asked for the floor back.
+        assertEquals("14\u00B0 Takizawa", WeatherNow.text(14.4, "Takizawa", "", -1, 0, -1));
+        assertEquals("14\u00B0 Takizawa", WeatherNow.text(14.4, "Takizawa", "", -1, 29, -1));
         assertEquals("14\u00B0 Takizawa \u00B7 Rain 30%", WeatherNow.text(14.4, "Takizawa", "", -1, 30, -1));
         assertEquals("14\u00B0 Takizawa \u00B7 Rain 80%", WeatherNow.text(14.4, "Takizawa", "", -1, 80, -1));
     }
@@ -61,9 +61,9 @@ public class WeatherNowTest {
         assertEquals("1\u00B0 Takizawa \u00B7 Overcast \u00B7 Snow 70%", WeatherNow.text(0.6, "Takizawa", "Overcast", -1, 40, 70));
         // A sky that already says rain does not get a second "Rain".
         assertEquals("8\u00B0 Takizawa \u00B7 Rain \u00B7 60%", WeatherNow.text(8.2, "Takizawa", "Rain", -1, 60, -1));
-        // Snow in the sky and a lower snow figure than the rain one: the snow figure still speaks, because that
-        // is the decision being made, and the rain figure does not get to argue with the sky at 1 degree.
-        assertEquals("1\u00B0 Takizawa \u00B7 Snow \u00B7 20%", WeatherNow.text(0.6, "Takizawa", "Snow", -1, 40, 20));
+        // Snow in the sky but barely likely, while rain is likelier: under the floor the line says snow and
+        // leaves the odds alone rather than arguing with itself at 1 degree.
+        assertEquals("1\u00B0 Takizawa \u00B7 Snow", WeatherNow.text(0.6, "Takizawa", "Snow", -1, 40, 20));
         // A percentage outside 0..100 is not a percentage: it is dropped, not shown as nonsense.
         assertEquals("1\u00B0", WeatherNow.text(0.6, "", "", -1, 140, 250));
     }
@@ -81,9 +81,13 @@ public class WeatherNowTest {
                 WeatherNow.text(8.2, "Takizawa", "Rain", -1, 60, -1, 61));
     }
 
-    @Test public void theChanceRidesAfterTheSkyAndBeforeTheHumidity() {
-        assertEquals("8\u00B0 Takizawa \u00B7 Clear \u00B7 Rain 60% \u00B7 Humidity 57%",
+    @Test public void theChanceRidesLastAndBehindTheHumidity() {
+        // The figure follows the facts: temperature, place, sky, humidity, and then what it is going to do.
+        assertEquals("8\u00B0 Takizawa \u00B7 Clear \u00B7 Humidity 57% \u00B7 Rain 60%",
                 WeatherNow.text(8.2, "Takizawa", "Clear", 57, 60, -1));
+        // With no humidity published it is still last, not in the middle.
+        assertEquals("8\u00B0 Takizawa \u00B7 Clear \u00B7 Rain 60%",
+                WeatherNow.text(8.2, "Takizawa", "Clear", -1, 60, -1));
     }
 
     @Test public void aPlaceThatIsBlankLeavesTheTemperatureAlone() {
@@ -179,9 +183,9 @@ public class WeatherNowTest {
         Object[] values = {"Takizawa", 8.0, "C", 0, 0, NOW - 60_000L, "Clear", null, null, null};
         WeatherNow.Line line = WeatherNow.fromRow(WeatherNow.readRow(cursor(names, values)), NOW);
         assertEquals("8\u00B0 Takizawa \u00B7 Clear", line.text);
-        // And a published 0% is still drawn, because a provider that says "no chance" has said something.
-        values[8] = 0;
-        assertEquals("8\u00B0 Takizawa \u00B7 Clear \u00B7 Rain 0%",
+        // A published figure still draws when it clears the floor, so the guard did not silence the feature.
+        values[8] = 60;
+        assertEquals("8\u00B0 Takizawa \u00B7 Clear \u00B7 Rain 60%",
                 WeatherNow.fromRow(WeatherNow.readRow(cursor(names, values)), NOW).text);
     }
 

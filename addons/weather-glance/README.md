@@ -66,9 +66,9 @@ changed is thrown away rather than stored — not even with a fresh timestamp.
   emoji: a TV's system font may have no colour emoji, and a tofu box under the clock is worse than no line.
   Each one carries U+FE0E, the text presentation selector, because `☀ ☔ ⚡ ❄` are emoji by default on a panel
   that ships NotoColorEmoji — without it, a cartoon umbrella turns up beside a plain line of type.
-- The optional parts, in this order: `☀ 14° Takizawa · Mostly clear · Rain 60% · Humidity 57%`. A chance
-  the reading publishes is always drawn, 0% included — the launcher keeps no threshold of its own — and when
-  the sky already says "Snow" or "Rain" the word is not repeated: `❄ 1° Takizawa · Snow · 70%`. It decides
+- The optional parts, in this order: `☀ 14° Takizawa · Mostly clear · Humidity 57% · Rain 60%` — the facts
+  first, the forecast last. A chance of rain or snow appears only from 30% upward, because 20% under a clock
+  is noise, and when the sky already says "Snow" or "Rain" the word is not repeated: `❄ 1° Takizawa · Snow · 70%`. It decides
   that from the WMO `code` as well as the word, because an add-on such as javierfn's writes the sky in the
   TV's own language: a Spanish provider saying "Nieve" costs the line no second label.
 - No line at all until a city is picked, when the network is down and nothing was ever fetched, when the

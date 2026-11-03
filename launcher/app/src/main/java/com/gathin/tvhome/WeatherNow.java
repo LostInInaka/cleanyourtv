@@ -25,6 +25,8 @@ final class WeatherNow {
     /** Below this a chance of rain is noise under the clock; at or above it, the viewer may want a coat. */
 
     static final long FRESH_MS = 3 * 60 * 60 * 1000L;
+    /** Below this a chance is not worth the width it takes: 20% under a clock is noise, 30% is a coat. */
+    static final int WORTH_MENTIONING = 30;
     /**
      * The add-on's contract, asked for exactly: place, temperature, unit, code, is_day, updated_ms. `unit` is
      * C or F and is never drawn - the launcher prints its own degree - but the query asks for it as agreed.
@@ -241,9 +243,10 @@ final class WeatherNow {
     }
 
     /**
-     * A published chance is drawn, whatever it is: 0% is a fact about the sky, not a reason to hide the figure.
-     * Snow wins over rain: when the forecast says snow, the snow figure is the one the viewer is deciding about.
-     * A number outside 0..100 is not a chance at all, so it is dropped rather than drawn as nonsense.
+     * The chance comes last, after the humidity, and only from {@link #WORTH_MENTIONING} up: a figure that low is
+     * noise under a clock. Snow wins over rain: when the forecast says snow, the snow figure is the one the viewer
+     * is deciding about. A number outside 0..100 is not a chance at all, so it is dropped rather than drawn as
+     * nonsense.
      */
     static String text(double temperature, String place, String sky, int humidity, int precipChance, int snowChance) {
         return text(temperature, place, sky, humidity, precipChance, snowChance, -1);
@@ -262,13 +265,15 @@ final class WeatherNow {
         if (sky != null && !sky.isEmpty()) out.append(" \u00B7 ").append(sky);
         // Under a sky that already says snow, the snow figure is the one shown: "Snow · Rain 40%" argues with
         // itself, so rain never answers a snow sky, even when rain is the likelier of the two.
+        if (humidity >= 0 && humidity <= 100) out.append(" \u00B7 Humidity ").append(humidity).append("%");
+        // Last, and only once it is worth carrying an umbrella: the figure follows the facts rather than sitting
+        // between them, and 20% under a clock is noise.
         boolean snowSky = names(sky, "snow") || isSnow(code);
-        if (snowChance >= 0 && snowChance <= 100) {
+        if (snowChance >= WORTH_MENTIONING && snowChance <= 100) {
             percent(out, snowSky, "snow", snowChance);
-        } else if (precipChance >= 0 && precipChance <= 100 && !snowSky) {
+        } else if (precipChance >= WORTH_MENTIONING && precipChance <= 100 && !snowSky) {
             percent(out, names(sky, "rain"), "rain", precipChance);
         }
-        if (humidity >= 0 && humidity <= 100) out.append(" \u00B7 Humidity ").append(humidity).append("%");
         return out.toString();
     }
 

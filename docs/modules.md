@@ -184,7 +184,7 @@ empty key means no line at all.
    | `updated_ms` | integer | Epoch milliseconds of the reading. A row without it, or older than three hours, hides the line |
    | `sky` | text | *Optional.* The sky in words, e.g. `Overcast`, shown after the temperature |
    | `humidity` | integer | *Optional.* Relative humidity in percent, shown as `Humidity 57%` |
-   | `precipitation_chance` | integer | *Optional.* Chance of precipitation in percent, shown as `Rain 60%` whenever it is published, 0% included |
+   | `precipitation_chance` | integer | *Optional.* Chance of precipitation in percent, drawn last and only from 30% upward: `… · Humidity 57% · Rain 60%` |
    | `snow_chance` | integer | *Optional.* Chance of snow in percent; it wins over the rain figure and the word is not repeated when the sky already says snow |
 
    An empty cursor hides the line, and so does a `null` in any of the optional columns for whichever part
