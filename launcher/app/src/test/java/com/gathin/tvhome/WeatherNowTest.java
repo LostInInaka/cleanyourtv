@@ -68,6 +68,19 @@ public class WeatherNowTest {
         assertEquals("1\u00B0", WeatherNow.text(0.6, "", "", -1, 140, 250));
     }
 
+    @Test public void theSkyIsReadInTheProvidersLanguageAndInItsCode() {
+        // javierfn's provider writes the sky in the TV's language: looking for the English word "snow" would
+        // draw "Nieve · Snow 70%". The weather code says snow in every language.
+        assertEquals("1\u00B0 Takizawa \u00B7 Nieve \u00B7 70%",
+                WeatherNow.text(0.6, "Takizawa", "Nieve", -1, 40, 70, 71));
+        // And a snow code with no snow figure still refuses to answer with the rain one.
+        assertEquals("1\u00B0 Takizawa \u00B7 Nublado",
+                WeatherNow.text(0.6, "Takizawa", "Nublado", -1, 40, -1, 73));
+        // Rain in a language we do not read is still not doubled up when the provider writes the word we know.
+        assertEquals("8\u00B0 Takizawa \u00B7 Rain \u00B7 60%",
+                WeatherNow.text(8.2, "Takizawa", "Rain", -1, 60, -1, 61));
+    }
+
     @Test public void theChanceRidesAfterTheSkyAndBeforeTheHumidity() {
         assertEquals("8\u00B0 Takizawa \u00B7 Clear \u00B7 Rain 60% \u00B7 Humidity 57%",
                 WeatherNow.text(8.2, "Takizawa", "Clear", 57, 60, -1));

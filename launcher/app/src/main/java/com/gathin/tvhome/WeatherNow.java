@@ -205,7 +205,7 @@ final class WeatherNow {
         int precipChance = row.length > 8 && row[8] instanceof Number ? ((Number) row[8]).intValue() : -1;
         int snowChance = row.length > 9 && row[9] instanceof Number ? ((Number) row[9]).intValue() : -1;
         return new Line(glyph(code, day),
-                text(((Number) row[1]).doubleValue(), place, sky, humidity, precipChance, snowChance), updated);
+                text(((Number) row[1]).doubleValue(), place, sky, humidity, precipChance, snowChance, code), updated);
     }
 
     /**
@@ -246,15 +246,27 @@ final class WeatherNow {
      * A number outside 0..100 is not a chance at all, so it is dropped rather than drawn as nonsense.
      */
     static String text(double temperature, String place, String sky, int humidity, int precipChance, int snowChance) {
+        return text(temperature, place, sky, humidity, precipChance, snowChance, -1);
+    }
+
+    /**
+     * The same line, with the weather code to say what the sky is when the words are not ours to read. The sky
+     * text comes from the add-on and is written in the TV's own language, so "does the sky already say snow?"
+     * cannot be answered by looking for an English word: a Spanish provider says "Nieve", and the code says it
+     * in every language.
+     */
+    static String text(double temperature, String place, String sky, int humidity, int precipChance, int snowChance,
+            int code) {
         StringBuilder out = new StringBuilder(Math.round(temperature) + "\u00B0");
         if (place != null && !place.isEmpty()) out.append(' ').append(place);
         if (sky != null && !sky.isEmpty()) out.append(" \u00B7 ").append(sky);
         // Under a sky that already says snow, the snow figure is the one shown: "Snow · Rain 40%" argues with
         // itself, so rain never answers a snow sky, even when rain is the likelier of the two.
+        boolean snowSky = names(sky, "snow") || isSnow(code);
         if (snowChance >= 0 && snowChance <= 100) {
-            percent(out, sky, "snow", snowChance);
-        } else if (precipChance >= 0 && precipChance <= 100 && !names(sky, "snow")) {
-            percent(out, sky, "rain", precipChance);
+            percent(out, snowSky, "snow", snowChance);
+        } else if (precipChance >= 0 && precipChance <= 100 && !snowSky) {
+            percent(out, names(sky, "rain"), "rain", precipChance);
         }
         if (humidity >= 0 && humidity <= 100) out.append(" \u00B7 Humidity ").append(humidity).append("%");
         return out.toString();
@@ -294,11 +306,15 @@ final class WeatherNow {
      * Appends the chance, without saying "snow" twice when the sky has already said it: "Snow \u00B7 70%", not
      * "Snow \u00B7 Snow 70%".
      */
-    private static void percent(StringBuilder out, String sky, String word, int value) {
-        boolean said = names(sky, word);
+    private static void percent(StringBuilder out, boolean said, String word, int value) {
         out.append(" \u00B7 ");
         if (!said) out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1)).append(' ');
         out.append(value).append("%");
+    }
+
+    /** The codes that are snow, whatever word the provider uses for them. */
+    static boolean isSnow(int code) {
+        return (code >= 71 && code <= 77) || code == 85 || code == 86;
     }
 
     /** Whether the sky's own wording already contains this word, case aside. */
