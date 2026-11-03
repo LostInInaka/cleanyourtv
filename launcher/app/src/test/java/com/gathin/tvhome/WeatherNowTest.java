@@ -35,6 +35,17 @@ public class WeatherNowTest {
         assertEquals("-3°", WeatherNow.text(-2.6, ""));
     }
 
+    @Test public void theOptionalSkyAndHumidityRideAlongAndDropWhenAbsent() {
+        assertEquals("14\u00B0 Takizawa \u00B7 Cloudy", WeatherNow.text(14.4, "Takizawa", "Cloudy", -1));
+        assertEquals("14\u00B0 Takizawa \u00B7 Humidity 90 %", WeatherNow.text(14.4, "Takizawa", "", 90));
+        assertEquals("14\u00B0 Takizawa \u00B7 Cloudy \u00B7 Humidity 90 %",
+                WeatherNow.text(14.4, "Takizawa", "Cloudy", 90));
+        // An add-on that publishes only the six columns draws exactly what it drew before.
+        assertEquals("14\u00B0 Takizawa", WeatherNow.text(14.4, "Takizawa", "", -1));
+        // Out of range means "not published", not "0 %".
+        assertEquals("14\u00B0", WeatherNow.text(14.4, "", "", 140));
+    }
+
     @Test public void aPlaceThatIsBlankLeavesTheTemperatureAlone() {
         // The place is trimmed on the way in, so a blank one is no place at all.
         assertEquals("14°", fresh("   ", 14.2, 0, 1).text);

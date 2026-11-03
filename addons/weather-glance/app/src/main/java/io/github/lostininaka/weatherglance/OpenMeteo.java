@@ -20,7 +20,7 @@ import org.json.JSONObject;
  */
 final class OpenMeteo {
     private static final String CURRENT = "https://api.open-meteo.com/v1/forecast"
-            + "?latitude=%.4f&longitude=%.4f&current=temperature_2m,weather_code,is_day&timezone=auto";
+            + "?latitude=%.4f&longitude=%.4f&current=temperature_2m,weather_code,is_day,relative_humidity_2m&timezone=auto";
     private static final String SEARCH = "https://geocoding-api.open-meteo.com/v1/search"
             + "?count=6&language=en&format=json&name=%s";
 
@@ -37,7 +37,8 @@ final class OpenMeteo {
         JSONObject cur = answer.optJSONObject("current");
         if (cur == null || !cur.has("temperature_2m")) return null;
         return new Now((int) Math.round(cur.optDouble("temperature_2m", Double.NaN)),
-                cur.optInt("weather_code", -1), cur.optInt("is_day", 1) == 1);
+                cur.optInt("weather_code", -1), cur.optInt("is_day", 1) == 1,
+                cur.has("relative_humidity_2m") ? cur.optInt("relative_humidity_2m", -1) : -1);
     }
 
     /** Places matching a name, best first; empty when nothing matches. */
@@ -89,10 +90,18 @@ final class OpenMeteo {
         final int code;
         final boolean day;
 
+        /** Relative humidity in percent, or -1 when the API did not answer with it. */
+        final int humidity;
+
         Now(int celsius, int code, boolean day) {
+            this(celsius, code, day, -1);
+        }
+
+        Now(int celsius, int code, boolean day, int humidity) {
             this.celsius = celsius;
             this.code = code;
             this.day = day;
+            this.humidity = humidity;
         }
     }
 

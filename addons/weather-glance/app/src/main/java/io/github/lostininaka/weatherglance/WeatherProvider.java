@@ -22,7 +22,7 @@ public final class WeatherProvider extends ContentProvider {
     static final String AUTHORITY = "io.github.lostininaka.weatherglance.now";
     static final Uri NOW = Uri.parse("content://" + AUTHORITY + "/now");
     private static final String[] COLUMNS =
-            {"_id", "place", "temperature", "unit", "code", "is_day", "updated_ms"};
+            {"_id", "place", "temperature", "unit", "code", "is_day", "updated_ms", "sky", "humidity"};
 
     @Override
     public boolean onCreate() {
@@ -48,6 +48,13 @@ public final class WeatherProvider extends ContentProvider {
                 else if ("code".equals(column)) row.add(store.code());
                 else if ("is_day".equals(column)) row.add(store.day() ? 1 : 0);
                 else if ("updated_ms".equals(column)) row.add(store.updated());
+                // Optional pair, matching javierfn's apple-tv-style branch so an add-on serves either fork: the
+                // sky in words, and the humidity when the reading carried one (null drops it on the launcher side).
+                else if ("sky".equals(column)) row.add(Conditions.describe(store.code())[1]);
+                else if ("humidity".equals(column)) {
+                    int humidity = store.humidity();
+                    row.add(humidity >= 0 ? humidity : null);
+                }
                 else row.add(null);
             }
         }

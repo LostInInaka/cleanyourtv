@@ -27,7 +27,8 @@ final class WeatherNow {
      * The add-on's contract, asked for exactly: place, temperature, unit, code, is_day, updated_ms. `unit` is
      * C or F and is never drawn - the launcher prints its own degree - but the query asks for it as agreed.
      */
-    private static final String[] COLUMNS = {"place", "temperature", "unit", "code", "is_day", "updated_ms"};
+    private static final String[] COLUMNS = {"place", "temperature", "unit", "code", "is_day", "updated_ms",
+            "sky", "humidity"};   // the last two are optional: a provider that does not publish them still draws
 
     private final Context ctx;
     private final Uri uri;
@@ -159,6 +160,12 @@ final class WeatherNow {
             if (at >= 0) row[4] = c.getInt(at);
             at = c.getColumnIndex("updated_ms");
             if (at >= 0) row[5] = c.getLong(at);
+            // Optional, from javierfn's apple-tv-style branch: the sky in words, and relative humidity. Absent
+            // means the line drops that part and nothing else, so an add-on publishing the six still works.
+            at = c.getColumnIndex("sky");
+            if (at >= 0) row[6] = c.getString(at);
+            at = c.getColumnIndex("humidity");
+            if (at >= 0) row[7] = c.getInt(at);
             return row;
         }
     }
@@ -174,7 +181,11 @@ final class WeatherNow {
         String place = row[0] instanceof String ? ((String) row[0]).trim() : "";
         int code = row[3] instanceof Number ? ((Number) row[3]).intValue() : -1;
         boolean day = !(row[4] instanceof Number) || ((Number) row[4]).intValue() != 0;
-        return new Line(glyph(code, day), text(((Number) row[1]).doubleValue(), place), updated);
+        // A caller that hands us the six-column row (older tests, a provider we could not ask for more) simply
+        // has no optional parts.
+        String sky = row.length > 6 && row[6] instanceof String ? ((String) row[6]).trim() : "";
+        int humidity = row.length > 7 && row[7] instanceof Number ? ((Number) row[7]).intValue() : -1;
+        return new Line(glyph(code, day), text(((Number) row[1]).doubleValue(), place, sky, humidity), updated);
     }
 
     /**
@@ -196,10 +207,21 @@ final class WeatherNow {
         return true;
     }
 
-    /** "14° Takizawa", or "14°" with no place: the launcher's own degree, no unit letter. */
+    /**
+     * "14° Takizawa", or "14°" with no place: the launcher's own degree, no unit letter. The optional sky goes
+     * after the place ("14° Takizawa · Cloudy") and humidity last (" · Humidity 90 %"), each dropped when the
+     * add-on does not publish it.
+     */
     static String text(double temperature, String place) {
-        String degrees = Math.round(temperature) + "\u00B0";
-        return place == null || place.isEmpty() ? degrees : degrees + " " + place;
+        return text(temperature, place, "", -1);
+    }
+
+    static String text(double temperature, String place, String sky, int humidity) {
+        StringBuilder out = new StringBuilder(Math.round(temperature) + "\u00B0");
+        if (place != null && !place.isEmpty()) out.append(' ').append(place);
+        if (sky != null && !sky.isEmpty()) out.append(" \u00B7 ").append(sky);
+        if (humidity >= 0 && humidity <= 100) out.append(" \u00B7 Humidity ").append(humidity).append(" %");
+        return out.toString();
     }
 
     /** One glyph per WMO group the add-on can publish; a code we do not know leaves the line without one. */

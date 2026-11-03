@@ -110,9 +110,23 @@ final class Store {
      * fetched for a different place.
      */
     boolean saveReading(Selections.Pick forPick, int celsius, int code, boolean day, long updatedMs) {
-        return selections.accept(forPick, () -> p.edit()
-                .putInt("temperature", celsius).putInt("code", code)
-                .putBoolean("day", day).putLong("updated", updatedMs).apply());
+        return saveReading(forPick, celsius, code, day, updatedMs, -1);
+    }
+
+    /** As above, with the humidity the reading came with: -1 stores nothing, so an older add-on's data still fits. */
+    boolean saveReading(Selections.Pick forPick, int celsius, int code, boolean day, long updatedMs, int humidity) {
+        return selections.accept(forPick, () -> {
+            SharedPreferences.Editor e = p.edit()
+                    .putInt("temperature", celsius).putInt("code", code)
+                    .putBoolean("day", day).putLong("updated", updatedMs);
+            if (humidity >= 0 && humidity <= 100) e.putInt("humidity", humidity); else e.remove("humidity");
+            e.apply();
+        });
+    }
+
+    /** Relative humidity in percent, or -1 when this reading has none. */
+    int humidity() {
+        return p.getInt("humidity", -1);
     }
 
     private double number(String key) {
