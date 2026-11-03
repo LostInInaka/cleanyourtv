@@ -46,9 +46,10 @@ public class WeatherNowTest {
         assertEquals("14\u00B0", WeatherNow.text(14.4, "", "", 140));
     }
 
-    @Test public void aChanceOfRainOnlyShowsWhenItIsWorthCarryingAnUmbrella() {
-        // Quiet below the threshold, spoken at and above it: 29% is noise, 30% is a coat.
-        assertEquals("14\u00B0 Takizawa", WeatherNow.text(14.4, "Takizawa", "", -1, 29, -1));
+    @Test public void aPublishedChanceIsDrawnWhetherItIsLikelyOrNot() {
+        // No threshold of our own: 0% is what the sky says, and the line repeats it rather than deciding for us.
+        assertEquals("14\u00B0 Takizawa \u00B7 Rain 0%", WeatherNow.text(14.4, "Takizawa", "", -1, 0, -1));
+        assertEquals("14\u00B0 Takizawa \u00B7 Rain 29%", WeatherNow.text(14.4, "Takizawa", "", -1, 29, -1));
         assertEquals("14\u00B0 Takizawa \u00B7 Rain 30%", WeatherNow.text(14.4, "Takizawa", "", -1, 30, -1));
         assertEquals("14\u00B0 Takizawa \u00B7 Rain 80%", WeatherNow.text(14.4, "Takizawa", "", -1, 80, -1));
     }
@@ -60,9 +61,9 @@ public class WeatherNowTest {
         assertEquals("1\u00B0 Takizawa \u00B7 Overcast \u00B7 Snow 70%", WeatherNow.text(0.6, "Takizawa", "Overcast", -1, 40, 70));
         // A sky that already says rain does not get a second "Rain".
         assertEquals("8\u00B0 Takizawa \u00B7 Rain \u00B7 60%", WeatherNow.text(8.2, "Takizawa", "Rain", -1, 60, -1));
-        // Snow in the sky but barely likely, while rain is likelier: the line says snow and leaves the odds alone
-        // rather than arguing with itself at 1 degree.
-        assertEquals("1\u00B0 Takizawa \u00B7 Snow", WeatherNow.text(0.6, "Takizawa", "Snow", -1, 40, 20));
+        // Snow in the sky and a lower snow figure than the rain one: the snow figure still speaks, because that
+        // is the decision being made, and the rain figure does not get to argue with the sky at 1 degree.
+        assertEquals("1\u00B0 Takizawa \u00B7 Snow \u00B7 20%", WeatherNow.text(0.6, "Takizawa", "Snow", -1, 40, 20));
         // A percentage outside 0..100 is not a percentage: it is dropped, not shown as nonsense.
         assertEquals("1\u00B0", WeatherNow.text(0.6, "", "", -1, 140, 250));
     }
@@ -155,5 +156,43 @@ public class WeatherNowTest {
         assertTrue(WeatherNow.expired(shown, at + 3 * HOUR + 1));
         // Nothing on screen is nothing to withdraw.
         assertFalse(WeatherNow.expired(null, at + 24 * HOUR));
+    }
+
+    @Test public void aNullColumnIsAbsentAndNotAFigureOfZero() {
+        // Seen on the TV: snow_chance NULL, drawn as "Snow 0%". Cursor.getInt answers 0 for a NULL column, so
+        // an absent optional becomes a figure of zero unless the read looks at isNull first.
+        String[] names = {"place", "temperature", "unit", "code", "is_day", "updated_ms",
+                "sky", "humidity", "precipitation_chance", "snow_chance"};
+        Object[] values = {"Takizawa", 8.0, "C", 0, 0, NOW - 60_000L, "Clear", null, null, null};
+        WeatherNow.Line line = WeatherNow.fromRow(WeatherNow.readRow(cursor(names, values)), NOW);
+        assertEquals("8\u00B0 Takizawa \u00B7 Clear", line.text);
+        // And a published 0% is still drawn, because a provider that says "no chance" has said something.
+        values[8] = 0;
+        assertEquals("8\u00B0 Takizawa \u00B7 Clear \u00B7 Rain 0%",
+                WeatherNow.fromRow(WeatherNow.readRow(cursor(names, values)), NOW).text);
+    }
+
+    /** A cursor stand-in: the real one cannot be built without a device, and getInt's NULL-as-0 is the point. */
+    private static android.database.Cursor cursor(String[] names, Object[] values) {
+        return (android.database.Cursor) java.lang.reflect.Proxy.newProxyInstance(
+                WeatherNowTest.class.getClassLoader(), new Class<?>[] {android.database.Cursor.class},
+                (proxy, m, args) -> {
+                    switch (m.getName()) {
+                        case "getColumnIndex": return java.util.Arrays.asList(names).indexOf((String) args[0]);
+                        case "isNull": return values[(Integer) args[0]] == null;
+                        case "getString": return (String) values[(Integer) args[0]];
+                        case "getInt": return values[(Integer) args[0]] == null
+                                ? 0 : ((Number) values[(Integer) args[0]]).intValue();
+                        case "getDouble": return ((Number) values[(Integer) args[0]]).doubleValue();
+                        case "getLong": return values[(Integer) args[0]] == null
+                                ? 0L : ((Number) values[(Integer) args[0]]).longValue();
+                        case "moveToNext": return true;
+                        default:
+                            Class<?> r = m.getReturnType();
+                            if (r == boolean.class) return false;
+                            if (r == int.class) return 0;
+                            return null;
+                    }
+                });
     }
 }

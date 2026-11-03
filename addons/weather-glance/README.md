@@ -65,8 +65,8 @@ changed is thrown away rather than stored — not even with a fresh timestamp.
 - The glyph from the WMO `code` and `is_day` (`☀ ☁ ☂ ❄ ⚡`, a moon for a clear night). Text glyphs, not
   emoji: a TV's system font may have no colour emoji, and a tofu box under the clock is worse than no line.
 - The optional parts, in this order: `☀ 14° Takizawa · Mostly clear · Rain 60% · Humidity 57%`. A chance
-  of rain or snow appears only from 30% upward — below that it is noise under a clock — and when the sky
-  already says "Snow" or "Rain" the word is not repeated: `❄ 1° Takizawa · Snow · 70%`.
+  the reading publishes is always drawn, 0% included — the launcher keeps no threshold of its own — and when
+  the sky already says "Snow" or "Rain" the word is not repeated: `❄ 1° Takizawa · Snow · 70%`.
 - No line at all until a city is picked, when the network is down and nothing was ever fetched, when the
   reading is more than three hours old, or when Home's `weather_now` names something else.
 
