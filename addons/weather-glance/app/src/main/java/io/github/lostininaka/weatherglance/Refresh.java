@@ -62,11 +62,35 @@ final class Refresh {
         }
     }
 
-    /** One fetch on the calling thread, for the job, which has to know when the work is over. */
+    /**
+     * One fetch on the calling thread, for the job, which has to know when the work is over.
+     *
+     * <p>Every outcome is said out loud in logcat, tagged {@code WeatherGlance}: a reading that never moved
+     * looked exactly like a renderer that dropped the line, and a day went into the wrong file because the
+     * only party who knew the truth kept it to itself. {@code adb logcat -d | grep WeatherGlance} now answers
+     * "did the clock run, and what came of it" without anyone having to sit and watch a panel.
+     */
     static void blocking(Context ctx) {
         Context app = ctx.getApplicationContext();
         Store store = new Store(app);
-        if (store.hasPlace() && store.stale()) FETCH.runHere(new Stored(app));
+        if (!store.hasPlace()) return;
+        if (!store.stale()) {
+            Log.i(TAG, "the job found the reading fresh (" + minutes(store) + " min old); nothing to fetch");
+            return;
+        }
+        Log.i(TAG, "the job is fetching: the reading is " + minutes(store) + " min old");
+        if (!FETCH.runHere(new Stored(app))) {
+            Log.i(TAG, "a fetch was already in the air; the job left the city to that one");
+            return;
+        }
+        // A fresh Store, not the one above: the question is what the provider serves now, not what we knew.
+        Log.i(TAG, "the job is done: the reading is now " + minutes(new Store(app)) + " min old");
+    }
+
+    /** The stored reading's age in whole minutes, or -1 when nothing is stored at all. */
+    private static long minutes(Store store) {
+        if (!store.hasReading()) return -1;
+        return Math.max(0, (System.currentTimeMillis() - store.updated()) / 60_000L);
     }
 
     private static void onWorkerThread(Runnable body) {

@@ -56,12 +56,14 @@ final class Fetch {
 
     /**
      * Run the fetch on the calling thread and return when it is done: a job has to know when the work it was
-     * started for has finished, so it can report that back rather than leave the system guessing. Does nothing
-     * while another worker holds the slot - that worker stores a reading for the same city anyway.
+     * started for has finished, so it can report that back rather than leave the system guessing. Returns
+     * false, having done nothing, while another worker holds the slot - that worker stores a reading for the
+     * same city anyway, and the caller should not report a fetch it did not make.
      */
-    void runHere(Cities cities) {
-        if (!running.compareAndSet(false, true)) return;
+    boolean runHere(Cities cities) {
+        if (!running.compareAndSet(false, true)) return false;
         work(cities);
+        return true;
     }
 
     private void work(Cities cities) {

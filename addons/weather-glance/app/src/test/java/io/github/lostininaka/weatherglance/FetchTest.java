@@ -1,6 +1,7 @@
 package io.github.lostininaka.weatherglance;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -104,7 +105,7 @@ public final class FetchTest {
         FakeCities cities = new FakeCities("Takizawa", TAKIZAWA);
         Fetch fetch = new Fetch((lat, lon) -> new OpenMeteo.Now(14, 3, true), workers);
 
-        fetch.runHere(cities);
+        assertTrue("the job did the work itself", fetch.runHere(cities));
 
         assertEquals("the reading is stored before the call returns",
                 Collections.singletonList("Takizawa:14"), cities.saved);
@@ -127,7 +128,8 @@ public final class FetchTest {
 
         fetch.request(cities);
         assertTrue("the background fetch starts", inFlight.await(5, TimeUnit.SECONDS));
-        fetch.runHere(cities);  // the job arrives while the launcher's own fetch is still in the air
+        // the job arrives while the launcher's own fetch is still in the air, so it must stand down
+        assertFalse(fetch.runHere(cities));
         finish.countDown();
         settle();
 
@@ -144,12 +146,12 @@ public final class FetchTest {
             return new OpenMeteo.Now(14, 3, true);
         }, workers);
 
-        fetch.runHere(cities);
+        assertTrue("the job ran, and the fetch inside it failed", fetch.runHere(cities));
         assertEquals("the failure is reported, not swallowed", 1, cities.failures.get());
         assertTrue(cities.saved.isEmpty());
 
         offline.set(false);
-        fetch.runHere(cities);
+        assertTrue("the slot was free again", fetch.runHere(cities));
         assertEquals("a failure does not lock the slot for the next run",
                 Collections.singletonList("Takizawa:14"), cities.saved);
         assertEquals(1, cities.failures.get());
