@@ -1,15 +1,29 @@
 package io.github.lostininaka.weatherglance;
 
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
 import android.content.Context;
+import android.util.Log;
 
 import java.util.concurrent.Executor;
 
 /**
- * Fetches the reading the launcher publishes and tells it to look again. Runs only when the owner opens
- * this app or the launcher reads a reading that has gone stale - there is no service, no alarm and no
- * polling of its own.
+ * Fetches the reading the launcher publishes and tells it to look again.
+ *
+ * <p>Two things ask for a fetch: the owner, by opening this app or pressing Refresh; and the job this class
+ * schedules, which runs on the reading's own clock whether or not anything is watching. The second one is not
+ * a luxury. Home reads the provider only while it is on screen, so an add-on that refreshed purely on a read
+ * went stale for as long as another app owned the panel - a set left in YouTube overnight came back to a
+ * reading eighteen hours old, and the launcher hid the line rather than print yesterday's weather.
  */
 final class Refresh {
+    /** How often the reading is refreshed without being asked. JobScheduler's floor is 15 minutes. */
+    static final long INTERVAL_MS = 20 * 60_000L;
+    /** Our one job id: rescheduling with it replaces the pending job rather than stacking another. */
+    private static final int JOB = 0x77EA;
+    private static final String TAG = "WeatherGlance";
+
     /** The app's one fetch; its slot keeps the launcher's reads from stacking up behind each other. */
     private static final Fetch FETCH = new Fetch(OpenMeteo::current, Refresh::onWorkerThread);
 
@@ -23,6 +37,36 @@ final class Refresh {
     /** Fetch now, whatever the stored reading's age. Safe to call from any thread. */
     static void now(Context ctx) {
         FETCH.request(new Stored(ctx.getApplicationContext()));
+    }
+
+    /**
+     * Give the reading a clock of its own. Idempotent and cheap enough to call on every process start: a job
+     * already pending is left alone, so the launcher's reads do not churn the scheduler. Called from the
+     * provider's {@code onCreate} and from the app's own screen - either one is enough, since Home always
+     * reads the provider before it can draw a line.
+     */
+    static void schedule(Context ctx) {
+        Context app = ctx.getApplicationContext();
+        JobScheduler jobs = (JobScheduler) app.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+        if (jobs == null || jobs.getPendingJob(JOB) != null) return;
+        JobInfo job = new JobInfo.Builder(JOB, new ComponentName(app, RefreshJob.class))
+                .setPeriodic(INTERVAL_MS)
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                .build();
+        try {
+            jobs.schedule(job);
+        } catch (RuntimeException refused) {
+            // A scheduler that will not have us is not fatal: the read-triggered fetch still works, and this
+            // is called again on the next process start. Say so rather than fail silently.
+            Log.w(TAG, "no clock of its own: only reads will refresh the reading", refused);
+        }
+    }
+
+    /** One fetch on the calling thread, for the job, which has to know when the work is over. */
+    static void blocking(Context ctx) {
+        Context app = ctx.getApplicationContext();
+        Store store = new Store(app);
+        if (store.hasPlace() && store.stale()) FETCH.runHere(new Stored(app));
     }
 
     private static void onWorkerThread(Runnable body) {
@@ -56,6 +100,12 @@ final class Refresh {
 
         @Override public void notifyReaders() {
             ctx.getContentResolver().notifyChange(WeatherProvider.NOW, null);
+        }
+
+        @Override public void failed(Exception why) {
+            // The last good reading stands, but a failure nobody can see is indistinguishable from a line the
+            // launcher decided not to draw - which is how a stale reading spent a day looking like a bug.
+            Log.w(TAG, "no new reading: the last one stands, and the next run tries again", why);
         }
     }
 }

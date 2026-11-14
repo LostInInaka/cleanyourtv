@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -98,6 +99,62 @@ public final class FetchTest {
         assertTrue(cities.saved.isEmpty());
     }
 
+    @Test
+    public void runHereFetchesOnTheCallingThreadAndStores() {
+        FakeCities cities = new FakeCities("Takizawa", TAKIZAWA);
+        Fetch fetch = new Fetch((lat, lon) -> new OpenMeteo.Now(14, 3, true), workers);
+
+        fetch.runHere(cities);
+
+        assertEquals("the reading is stored before the call returns",
+                Collections.singletonList("Takizawa:14"), cities.saved);
+        assertEquals(1, cities.notices.get());
+        assertEquals("the job needs no thread of its own", 0, threads.size());
+    }
+
+    @Test
+    public void runHereDoesNothingWhileAWorkerHoldsTheSlot() throws Exception {
+        FakeCities cities = new FakeCities("Takizawa", TAKIZAWA);
+        AtomicInteger calls = new AtomicInteger();
+        CountDownLatch inFlight = new CountDownLatch(1);
+        CountDownLatch finish = new CountDownLatch(1);
+        Fetch fetch = new Fetch((lat, lon) -> {
+            calls.incrementAndGet();
+            inFlight.countDown();
+            await(finish, "the test never let the fetch go");
+            return new OpenMeteo.Now(14, 3, true);
+        }, workers);
+
+        fetch.request(cities);
+        assertTrue("the background fetch starts", inFlight.await(5, TimeUnit.SECONDS));
+        fetch.runHere(cities);  // the job arrives while the launcher's own fetch is still in the air
+        finish.countDown();
+        settle();
+
+        assertEquals("one fetch for one city, not two", 1, calls.get());
+        assertEquals(Collections.singletonList("Takizawa:14"), cities.saved);
+    }
+
+    @Test
+    public void aFailedRunHereIsReportedAndDoesNotLockTheSlot() {
+        FakeCities cities = new FakeCities("Takizawa", TAKIZAWA);
+        AtomicBoolean offline = new AtomicBoolean(true);
+        Fetch fetch = new Fetch((lat, lon) -> {
+            if (offline.get()) throw new IOException("offline");
+            return new OpenMeteo.Now(14, 3, true);
+        }, workers);
+
+        fetch.runHere(cities);
+        assertEquals("the failure is reported, not swallowed", 1, cities.failures.get());
+        assertTrue(cities.saved.isEmpty());
+
+        offline.set(false);
+        fetch.runHere(cities);
+        assertEquals("a failure does not lock the slot for the next run",
+                Collections.singletonList("Takizawa:14"), cities.saved);
+        assertEquals(1, cities.failures.get());
+    }
+
     /** What the held fetch for the old city answers. */
     private enum Old { ANSWER, EMPTY, FAILED }
 
@@ -161,6 +218,7 @@ public final class FetchTest {
         final Selections selections;
         final List<String> saved = Collections.synchronizedList(new ArrayList<>());
         final AtomicInteger notices = new AtomicInteger();
+        final AtomicInteger failures = new AtomicInteger();
 
         FakeCities(String place, double lat) {
             selections = new Selections(new Selections.Pick(place, lat, 141.15, 0L));
@@ -185,6 +243,10 @@ public final class FetchTest {
 
         @Override public void notifyReaders() {
             notices.incrementAndGet();
+        }
+
+        @Override public void failed(Exception why) {
+            failures.incrementAndGet();
         }
     }
 }

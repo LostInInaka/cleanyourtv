@@ -16,5 +16,5 @@
     <string name="pick_place">正しい場所を選んでください：</string>
     <string name="offline">Open-Meteo に接続できません。テレビのネットワークを確認してください。</string>
     <string name="line_hint">%1$s ・ %2$d 分前</string>
-    <string name="about">天気データは Open-Meteo（キー不要・アカウント不要）。Clean Your TV はこのアプリが公開するコンテンツプロバイダから天気を読むだけで、ランチャー自身は通信しません。更新はこの画面を開いたときと、20 分経過後にホームが読んだときに行われます。送信されるのは座標だけです。</string>
+    <string name="about">天気データは Open-Meteo（キー不要・アカウント不要）。Clean Your TV はこのアプリが公開するコンテンツプロバイダから天気を読むだけで、ランチャー自身は通信しません。更新は、この画面を開いたとき、20 分を過ぎた天気をホームが読んだとき、そしてホームが見る前に用意できるよう 20 分ごとの自動更新で行われます。送信されるのは座標だけです。</string>
 </resources>

@@ -16,5 +16,5 @@
     <string name="pick_place">Pick the right place:</string>
     <string name="offline">No answer from Open-Meteo. Check the TV\'s network and try again.</string>
     <string name="line_hint">%1$s · %2$d min ago</string>
-    <string name="about">Weather from Open-Meteo (no key, no account). Clean Your TV reads the weather from the content provider this app publishes; the launcher itself never goes online. The reading refreshes when you open this screen and when Home reads it after 20 minutes, and the request carries nothing but the coordinates.</string>
+    <string name="about">Weather from Open-Meteo (no key, no account). Clean Your TV reads the weather from the content provider this app publishes; the launcher itself never goes online. The reading refreshes when you open this screen, when Home asks for one older than 20 minutes, and on its own every 20 minutes so the line is ready before Home looks. The request carries nothing but the coordinates.</string>
 </resources>

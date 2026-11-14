@@ -42,6 +42,9 @@ public final class MainActivity extends Activity {
         super.onCreate(saved);
         setContentView(R.layout.activity_main);
         store = new Store(this);
+        // Opening this screen is enough to arm the reading's own clock; the provider arms it too, whichever
+        // comes first, and arming it twice is a no-op.
+        Refresh.schedule(this);
         line = findViewById(R.id.line);
         status = findViewById(R.id.status);
         city = findViewById(R.id.city);

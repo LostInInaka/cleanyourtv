@@ -196,6 +196,13 @@ empty key means no line at all.
    change, and again if the line it is holding passes three hours while Home stays on screen; it watches
    only while it is on screen, and a query is the app's cue to refresh a reading that is getting old.
 
+   **Give the app a clock of its own as well** — a `JobScheduler` or `WorkManager` job every 15–20 minutes.
+   Home is only one of the things that can be on screen, and while another app is in front the launcher
+   performs no queries at all: a provider that refreshed only on a read went a day stale on a set left in
+   YouTube, and the line vanished the moment Home came back, because the launcher hides a reading older than
+   three hours. Log a failed fetch too: a failure nobody can read in logcat looks exactly like a renderer
+   that dropped the row, and that is a day spent looking in the wrong file.
+
 A reading belongs to the place it was fetched for: if the person picks another city while a fetch is still
 running, the running fetch must not publish under the new city's name. Publish only while the selection it
 started with is still the current one, and hand an overtaken fetch off to the newest city.

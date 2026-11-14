@@ -27,6 +27,10 @@ public final class WeatherProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
+        // The first read is the moment to give the reading a clock of its own: from here on the job keeps it
+        // fresh whether or not Home is on screen. Idempotent, so a restarted process costs nothing.
+        Context ctx = getContext();
+        if (ctx != null) Refresh.schedule(ctx);
         return true;
     }
 

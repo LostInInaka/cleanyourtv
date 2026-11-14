@@ -29,9 +29,13 @@ add-on's.
    Push the theme as usual (`tools/theme.sh <theme folder>`). Empty, uninstalled or a package that publishes
    nothing means no line at all — nothing to clean up.
 
-The reading refreshes while the app's own screen is open, and whenever Home asks for one that is more than
-20 minutes old; Home's query is answered from the cache first and the app then notifies it when a newer
-reading lands, so a slow network never holds up Home's first frame.
+The reading refreshes while the app's own screen is open, whenever Home asks for one that is more than 20
+minutes old, and on a clock of its own every 20 minutes (`RefreshJob`, a `JobScheduler` job) whether or not
+Home is on screen. That third one is what keeps the line honest: Home queries only while it is drawn, so a
+set left inside another app for a day used to come back to a reading from the last time Home was visible —
+and the launcher hides a reading older than three hours rather than print yesterday's weather. Home's query
+is still answered from the cache first, and the app notifies it when a newer reading lands, so a slow network
+never holds up Home's first frame.
 
 ## What it publishes
 

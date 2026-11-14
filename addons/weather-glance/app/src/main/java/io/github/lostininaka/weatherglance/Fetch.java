@@ -21,6 +21,12 @@ final class Fetch {
         boolean save(Selections.Pick forPick, OpenMeteo.Now reading, long updatedMs);
 
         void notifyReaders();
+
+        /**
+         * A fetch for the current city failed. The last good reading stands, so this is for the record rather
+         * than for recovery: an exception nobody logs reads exactly like a line the launcher chose to hide.
+         */
+        default void failed(Exception why) {}
     }
 
     /** The network as one call: a point in, the conditions there out, null when the answer has none. */
@@ -48,6 +54,16 @@ final class Fetch {
         }
     }
 
+    /**
+     * Run the fetch on the calling thread and return when it is done: a job has to know when the work it was
+     * started for has finished, so it can report that back rather than leave the system guessing. Does nothing
+     * while another worker holds the slot - that worker stores a reading for the same city anyway.
+     */
+    void runHere(Cities cities) {
+        if (!running.compareAndSet(false, true)) return;
+        work(cities);
+    }
+
     private void work(Cities cities) {
         Selections.Pick fetched = null;
         try {
@@ -59,8 +75,9 @@ final class Fetch {
                 }
             }
         } catch (IOException | RuntimeException failed) {
-            // No network, DNS or TLS, or an answer we could not read: the last good reading stands, and
-            // the launcher's next read tries again. A retry from here would only hammer a dead link.
+            // No network, DNS or TLS, or an answer we could not read: the last good reading stands, and the
+            // next read or the job's next run tries again. A retry from here would only hammer a dead link.
+            cities.failed(failed);
         } finally {
             // Let go before asking whether to go round again: a pick that lands while this worker still
             // owned the slot had its own request dropped, and it is visible by the time we look.

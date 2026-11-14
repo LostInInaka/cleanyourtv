@@ -27,6 +27,14 @@
             android:authorities="io.github.lostininaka.weatherglance.now"
             android:exported="true" />
 
+        <!-- The reading's own clock: refreshes the stored reading whether or not Home is on screen, so the
+             line is never a reading from the last time another app let go of the panel. Bound by the system
+             only, never by the launcher; not exported, and it asks for no permission of its own. -->
+        <service
+            android:name=".RefreshJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
