@@ -196,7 +196,9 @@ empty key means no line at all.
    change, and again if the line it is holding passes three hours while Home stays on screen; it watches
    only while it is on screen, and a query is the app's cue to refresh a reading that is getting old.
 
-   **Give the app a clock of its own as well** — a `JobScheduler` or `WorkManager` job every 15–20 minutes.
+   **Give the app a clock of its own as well** — a `JobScheduler` or `WorkManager` job every 15–20 minutes,
+   and pass the flex argument explicitly: `setPeriodic(20 min)` alone sets flex equal to the interval, so the
+   system may use the whole window and a job asked for every 20 minutes can first run at 30.
    Home is only one of the things that can be on screen, and while another app is in front the launcher
    performs no queries at all: a provider that refreshed only on a read went a day stale on a set left in
    YouTube, and the line vanished the moment Home came back, because the launcher hides a reading older than

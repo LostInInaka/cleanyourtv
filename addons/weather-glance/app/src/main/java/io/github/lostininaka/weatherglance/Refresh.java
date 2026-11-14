@@ -20,6 +20,15 @@ import java.util.concurrent.Executor;
 final class Refresh {
     /** How often the reading is refreshed without being asked. JobScheduler's floor is 15 minutes. */
     static final long INTERVAL_MS = 20 * 60_000L;
+    /**
+     * How much slack the system gets to pick its moment in.
+     *
+     * <p>Leaving flex out of {@code setPeriodic} makes it equal the interval, and the system then spends the
+     * whole window: a 20-minute job measured on the TV first ran at 29m49s, which made "every 20 minutes" a
+     * claim the set did not keep. Five minutes of flex puts the run between roughly 18 and 23, close enough
+     * that the sentence and the behaviour agree.
+     */
+    static final long FLEX_MS = 5 * 60_000L;
     /** Our one job id: rescheduling with it replaces the pending job rather than stacking another. */
     private static final int JOB = 0x77EA;
     private static final String TAG = "WeatherGlance";
@@ -50,7 +59,7 @@ final class Refresh {
         JobScheduler jobs = (JobScheduler) app.getSystemService(Context.JOB_SCHEDULER_SERVICE);
         if (jobs == null || jobs.getPendingJob(JOB) != null) return;
         JobInfo job = new JobInfo.Builder(JOB, new ComponentName(app, RefreshJob.class))
-                .setPeriodic(INTERVAL_MS)
+                .setPeriodic(INTERVAL_MS, FLEX_MS)
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .build();
         try {
