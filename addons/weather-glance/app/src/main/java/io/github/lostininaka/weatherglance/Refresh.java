@@ -57,12 +57,24 @@ final class Refresh {
     static void schedule(Context ctx) {
         Context app = ctx.getApplicationContext();
         JobScheduler jobs = (JobScheduler) app.getSystemService(Context.JOB_SCHEDULER_SERVICE);
-        if (jobs == null || jobs.getPendingJob(JOB) != null) return;
+        if (jobs == null) return;
+        JobInfo pending = jobs.getPendingJob(JOB);
+        if (pending != null) {
+            // A pending job keeps the terms it was given, and a periodic job re-arms itself after every run, so
+            // "a job is pending" is not the same as "the job we want is pending". Trusting presence alone left a
+            // set upgraded in place on whatever interval and flex the older build asked for - measured at
+            // twenty-and-twenty while the code said five - and would have done the same to every later change.
+            if (pending.getIntervalMillis() == INTERVAL_MS && pending.getFlexMillis() == FLEX_MS) return;
+            Log.i(TAG, "the clock on file asks for " + minutes(pending.getIntervalMillis()) + " min with "
+                    + minutes(pending.getFlexMillis()) + " min of flex; asking again for "
+                    + minutes(INTERVAL_MS) + " and " + minutes(FLEX_MS));
+        }
         JobInfo job = new JobInfo.Builder(JOB, new ComponentName(app, RefreshJob.class))
                 .setPeriodic(INTERVAL_MS, FLEX_MS)
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .build();
         try {
+            // Same job id, so this replaces the pending job rather than stacking a second clock beside it.
             jobs.schedule(job);
         } catch (RuntimeException refused) {
             // A scheduler that will not have us is not fatal: the read-triggered fetch still works, and this
@@ -100,6 +112,11 @@ final class Refresh {
     private static long minutes(Store store) {
         if (!store.hasReading()) return -1;
         return Math.max(0, (System.currentTimeMillis() - store.updated()) / 60_000L);
+    }
+
+    /** A duration in whole minutes, for saying a schedule out loud. */
+    private static long minutes(long millis) {
+        return millis / 60_000L;
     }
 
     private static void onWorkerThread(Runnable body) {
